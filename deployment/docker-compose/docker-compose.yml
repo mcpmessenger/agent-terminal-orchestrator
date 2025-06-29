@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: ../../
+      dockerfile: containers/base/Dockerfile
+    container_name: gateway
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    ports:
+      - "8090:8080"
+    command: |
+      bash -c "npm install && node services/gateway/index.cjs"
+    tty: true
+
+  repo-manager:
+    image: python:3.11-slim
+    container_name: repo-manager
+    working_dir: /app
+    volumes:
+      - ../../services/repository-manager:/app
+    ports:
+      - "5000:5000"
+    entrypoint: /bin/sh -c "pip install flask && python app.py"
+
+  runtime-manager:
+    build:
+      context: ../../services/runtime-manager
+      dockerfile: Dockerfile
+    container_name: runtime-manager
+    working_dir: /app
+    volumes:
+      # allow runtime-manager to control host docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "4000:4000"
+    tty: true
+
+  # Build runtime images (nodejs, python) so runtime-manager can spawn them
+  runtime-nodejs-build:
+    build:
+      context: ../../containers/runtimes/nodejs
+      dockerfile: Dockerfile
+    image: runtime-nodejs:latest
+    entrypoint: ["echo", "built runtime-nodejs image"]
+
+  runtime-python-build:
+    build:
+      context: ../../containers/runtimes/python
+      dockerfile: Dockerfile
+    image: runtime-python:latest
+    entrypoint: ["echo", "built runtime-python image"] 
