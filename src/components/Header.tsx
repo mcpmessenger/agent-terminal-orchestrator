@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings, Box, Sparkles } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 export function Header() {
   return (
@@ -32,6 +32,7 @@ export function Header() {
             </div>
           </div>
           
+          <ThemeToggle />
           <Button variant="outline" size="sm">
             <Settings className="h-4 w-4 mr-2" />
             Settings

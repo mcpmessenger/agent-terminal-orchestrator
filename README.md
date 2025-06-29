@@ -1,73 +1,60 @@
-# Welcome to your Lovable project
+# Agent Terminal Orchestrator
 
-## Project info
+A web UI for spinning up multiple interactive terminals (PowerShell, CMD, WSL bash, or a throw-away Docker Ubuntu shell) inside your browser and routing them through WebSockets.
 
-**URL**: https://lovable.dev/projects/8f443304-2987-402e-a8eb-7468e59be242
+## Tech stack
 
-## How can I edit this code?
+• Vite + React + TypeScript  
+• Tailwind CSS with shadcn-ui components  
+• `xterm.js` for terminal emulation  
+• Node/Express WebSocket gateway (fallbacks to `child_process` if `node-pty` isn't installed)  
 
-There are several ways of editing your application.
+## Quick start
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/8f443304-2987-402e-a8eb-7468e59be242) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+```bash
+# install deps
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# ① back-end PTY gateway (port 8080)
+npm run server
+
+# ② front-end dev server (port 5173)
 npm run dev
 ```
+Open `http://localhost:5173` and click **New Terminal**.
 
-**Edit a file directly in GitHub**
+## Runtime options
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+When you create a terminal you can choose the underlying shell:
 
-**Use GitHub Codespaces**
+| Option          | Notes |
+|-----------------|-------|
+| PowerShell      | default on Windows |
+| CMD             | legacy Windows shell |
+| WSL bash        | requires `wsl.exe` (→ `wsl --install`) |
+| Docker Ubuntu   | runs `docker run --rm -it -v $PWD:/workspace ubuntu bash` (Docker Desktop must be running) |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The selection is sent as `ws://localhost:8080/pty?shell=<runtime>`.
 
-## What technologies are used for this project?
+## Production build
 
-This project is built with:
+```bash
+npm run build     # static assets in dist/
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Serve the `dist` folder with your favourite reverse proxy (nginx, Caddy, etc.) and keep `npm run server` running behind the same host.
 
-## How can I deploy this project?
+## Customisation
 
-Simply open [Lovable](https://lovable.dev/projects/8f443304-2987-402e-a8eb-7468e59be242) and click on Share -> Publish.
+* **Dark/light theme** – click the sun / moon icon in the navbar.  
+* **Close a terminal** – use the × in the card header.  
+* **Grid** – responsive 2 columns; automatically grows downwards.
 
-## Can I connect a custom domain to my Lovable project?
+---
+### Troubleshooting
 
-Yes, you can!
+• `node-pty couldn't be loaded` – you can ignore on Windows; the gateway falls back to `child_process.spawn`.  Install `node-pty` after Visual Studio C++ build tools for full PTY support.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+• WSL option not working → make sure `wsl --status` prints details.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+• Docker Ubuntu says `docker command not found` → install Docker Desktop and ensure it's in PATH.

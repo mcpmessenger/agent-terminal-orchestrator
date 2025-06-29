@@ -1,92 +1,44 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Settings, Box } from 'lucide-react';
-
-interface Terminal {
-  id: string;
-  name: string;
-  agent: string;
-  status: 'running' | 'idle' | 'stopped';
-  repository?: string;
-  lastCommand?: string;
-}
-
-const mockTerminals: Terminal[] = [
-  {
-    id: 'claude-1',
-    name: 'Claude Terminal',
-    agent: 'Claude',
-    status: 'running',
-    repository: 'project-alpha',
-    lastCommand: 'git status'
-  },
-  {
-    id: 'gemini-1',
-    name: 'Gemini Terminal',
-    agent: 'Gemini',
-    status: 'idle',
-    repository: 'auth-templates',
-    lastCommand: 'mcp send --to claude'
-  }
-];
+import { useTerminals } from '@/contexts/TerminalContext';
+import Terminal from '@/components/Terminal';
+import { X, GitBranch, FolderGit2 } from 'lucide-react';
+import GlowWrapper from './GlowWrapper';
 
 export function TerminalGrid() {
-  const getStatusColor = (status: Terminal['status']) => {
-    switch (status) {
-      case 'running':
-        return 'bg-green-500';
-      case 'idle':
-        return 'bg-yellow-500';
-      case 'stopped':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
+  const { sessions, remove } = useTerminals();
+
+  if (sessions.length === 0) {
+    return <p className="text-muted-foreground">No active terminals. Click "New Terminal" to start one.</p>;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {mockTerminals.map((terminal) => (
-        <Card key={terminal.id} className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${getStatusColor(terminal.status)}`} />
-                <h3 className="font-semibold">{terminal.name}</h3>
-              </div>
-              <Badge variant="secondary">{terminal.agent}</Badge>
-            </div>
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="bg-black rounded-lg p-4 font-mono text-sm text-green-400">
-              <div className="text-gray-500">
-                [{terminal.agent.toLowerCase()}@{terminal.repository || 'workspace'}]$
-              </div>
-              <div>{terminal.lastCommand}</div>
-            </div>
-            
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Box className="h-4 w-4" />
-              <span>Repository: {terminal.repository || 'No repository'}</span>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline">
-                View Terminal
-              </Button>
-              <Button size="sm" variant="outline">
-                Send MCP Message
+      {sessions.map((session) => (
+        <GlowWrapper key={session.id}>
+          <Card className="p-4 space-y-3 bg-background rounded-lg group-hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold">{session.name}</div>
+              <Button size="icon" variant="ghost" onClick={() => remove(session.id)}>
+                <X className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        </Card>
+            <div className="h-[300px] rounded-md overflow-hidden">
+              <Terminal />
+            </div>
+            {(session.repository || session.branch) && (
+              <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                {session.repository && (
+                  <span className="flex items-center gap-1"><FolderGit2 className="h-4 w-4" />{session.repository}</span>
+                )}
+                {session.branch && (
+                  <span className="flex items-center gap-1"><GitBranch className="h-4 w-4" />{session.branch}</span>
+                )}
+              </div>
+            )}
+          </Card>
+        </GlowWrapper>
       ))}
     </div>
   );
