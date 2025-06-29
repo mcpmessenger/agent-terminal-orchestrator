@@ -6,11 +6,12 @@ import ThemeToggle from './ThemeToggle';
 import { useTerminals } from '@/contexts/TerminalContext';
 import { useMcp } from '@/contexts/McpContext';
 import SettingsDialog from './SettingsDialog';
+import { toast } from '@/hooks/use-toast';
 
 export function Header() {
   const { sessions } = useTerminals();
   const activeCount = sessions.length;
-  const { isConnected } = useMcp();
+  const { isConnected, ping } = useMcp();
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,6 +40,12 @@ export function Header() {
             </div>
           </div>
           
+          <Button variant="outline" size="sm" onClick={async ()=>{
+            const ok = await ping();
+            toast({ title: ok? 'Agent responded ✅':'No response ❌', description: ok? 'pong':'timeout or error'});
+          }}>
+            Ping Agent
+          </Button>
           <ThemeToggle />
           <SettingsDialog />
         </div>

@@ -4,15 +4,71 @@ const WebSocket = require("ws");
 const os = require("os");
 const child_process = require("child_process");
 const url = require('url');
+const amqp = require("amqplib");
+const { randomUUID } = require("crypto");
+const cors = require("cors");
 
 const app = express();
 const port = process.env.PORT || 8080;
 
+app.use(cors());
+
 // Simple health endpoint
 app.get('/health', (req,res)=>res.json({status:'healthy', service:'gateway', timestamp: new Date().toISOString()}));
 
-// MCP ping endpoint
-app.get('/mcp/ping', (req,res)=>res.json({type:'pong', ts: Date.now()}));
+// AMQP setup
+let amqpChannel;
+// Use localhost by default when running outside docker; inside compose set env
+const AMQP_URL = process.env.AMQP_URL || "amqp://localhost:5672";
+const EXCHANGE = "mcp.poc";
+(async () => {
+  try {
+    const conn = await amqp.connect(AMQP_URL);
+    const ch = await conn.createChannel();
+    await ch.assertExchange(EXCHANGE, "fanout", { durable: false });
+    amqpChannel = ch;
+    console.log(`[gateway] Connected to AMQP at ${AMQP_URL}`);
+  } catch (err) {
+    console.error("[gateway] Failed to connect to AMQP:", err.message);
+  }
+})();
+
+// MCP ping endpoint (proxy through RabbitMQ ping/pong)
+app.get('/mcp/ping', async (req, res) => {
+  // if AMQP unavailable just respond inline to avoid breaking UI
+  if (!amqpChannel) {
+    return res.json({ status: 'degraded', ts: Date.now() });
+  }
+
+  try {
+    const correlationId = randomUUID();
+    const ts = Date.now();
+    // create exclusive temp queue for reply
+    const q = await amqpChannel.assertQueue('', { exclusive: true });
+    const timeout = setTimeout(() => {
+      amqpChannel.deleteQueue(q.queue).catch(() => {});
+      return res.status(504).json({ error: 'timeout' });
+    }, 2000);
+
+    amqpChannel.consume(q.queue, (msg) => {
+      if (!msg) return;
+      try {
+        const m = JSON.parse(msg.content.toString());
+        if (m.type === 'pong' && m.correlationId === correlationId) {
+          clearTimeout(timeout);
+          res.json({ status: 'ok', ts: m.ts });
+          amqpChannel.deleteQueue(q.queue).catch(() => {});
+        }
+      } catch {}
+    }, { noAck: true });
+
+    const payload = { type: 'ping', ts, correlationId, sender: 'gateway' };
+    amqpChannel.publish(EXCHANGE, '', Buffer.from(JSON.stringify(payload)), { correlationId, replyTo: q.queue });
+  } catch (err) {
+    console.error('[gateway] /mcp/ping error', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
 
 const server = http.createServer(app);
 
