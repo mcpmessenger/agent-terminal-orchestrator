@@ -11,6 +11,9 @@ const port = process.env.PORT || 8080;
 // Simple health endpoint
 app.get('/health', (req,res)=>res.json({status:'healthy', service:'gateway', timestamp: new Date().toISOString()}));
 
+// MCP ping endpoint
+app.get('/mcp/ping', (req,res)=>res.json({type:'pong', ts: Date.now()}));
+
 const server = http.createServer(app);
 
 // PTY WebSocket endpoint

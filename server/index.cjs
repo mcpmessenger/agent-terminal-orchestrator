@@ -88,6 +88,9 @@ wss.on("connection", (ws, req) => {
 // Health check
 app.get('/health', (req,res)=>res.json({status:'healthy', timestamp: new Date().toISOString()}));
 
+// MCP ping
+app.get('/mcp/ping', (req,res)=>res.json({type:'pong', ts: Date.now()}));
+
 server.listen(port, () => {
   console.log(`PTY server listening on http://localhost:${port}`);
 }); 

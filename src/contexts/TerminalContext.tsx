@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { TerminalSession } from "@/types/terminal";
+import { useSettings } from './SettingsContext';
 
 interface TerminalContextValue {
   sessions: TerminalSession[];
@@ -17,6 +18,7 @@ export const useTerminals = () => {
 };
 
 export const TerminalProvider = ({ children }: { children: React.ReactNode }) => {
+  const { defaultShell } = useSettings();
   const [sessions, setSessions] = useState<TerminalSession[]>(() => {
     const stored = localStorage.getItem("terminal-sessions");
     return stored ? (JSON.parse(stored) as TerminalSession[]) : [];
@@ -39,7 +41,7 @@ export const TerminalProvider = ({ children }: { children: React.ReactNode }) =>
         repository: details.repository,
         branch: details.branch,
         image: details.image,
-        runtime: details.runtime ?? 'bash',
+        runtime: details.runtime ?? defaultShell,
       },
     ]);
   };

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Box, Sparkles } from 'lucide-react';
+import { Box, Sparkles } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useTerminals } from '@/contexts/TerminalContext';
 import { useMcp } from '@/contexts/McpContext';
+import SettingsDialog from './SettingsDialog';
 
 export function Header() {
   const { sessions } = useTerminals();
@@ -39,10 +40,7 @@ export function Header() {
           </div>
           
           <ThemeToggle />
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
+          <SettingsDialog />
         </div>
       </div>
     </header>

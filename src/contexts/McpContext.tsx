@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface McpContextValue {
   isConnected: boolean;
-  send: (payload: any) => void;
+  ping: () => Promise<boolean>;
 }
 
 const McpContext = createContext<McpContextValue | undefined>(undefined);
@@ -14,24 +14,33 @@ export const useMcp = () => {
 };
 
 export const McpProvider = ({ children }: { children: React.ReactNode }) => {
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setConnected] = useState(false);
 
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:9000/mcp");
-    setSocket(ws);
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    return () => ws.close();
-  }, []);
+  const baseUrl = (() => {
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+    const port = '8090';
+    return `${proto}//${host}:${port}`;
+  })();
 
-  const send = (payload: any) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(payload));
+  const ping = async () => {
+    try {
+      const res = await fetch(`${baseUrl}/mcp/ping`);
+      const ok = res.ok;
+      setConnected(ok);
+      return ok;
+    } catch {
+      setConnected(false);
+      return false;
     }
   };
 
-  return (
-    <McpContext.Provider value={{ isConnected, send }}>{children}</McpContext.Provider>
-  );
+  useEffect(() => {
+    // initial and periodic ping every 30s
+    ping();
+    const id = setInterval(ping, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <McpContext.Provider value={{ isConnected, ping }}>{children}</McpContext.Provider>;
 }; 
