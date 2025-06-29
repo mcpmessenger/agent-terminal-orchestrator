@@ -12,8 +12,10 @@ services:
     ports:
       - "8090:8080"
     command: |
-      bash -c "npm install && node services/gateway/index.cjs"
+      bash -c "npm install && npm install cors && node services/gateway/index.cjs"
     tty: true
+    environment:
+      - AMQP_URL=amqp://rabbitmq:5672
 
   repo-manager:
     image: python:3.11-slim
@@ -51,4 +53,33 @@ services:
       context: ../../containers/runtimes/python
       dockerfile: Dockerfile
     image: runtime-python:latest
-    entrypoint: ["echo", "built runtime-python image"] 
+    entrypoint: ["echo", "built runtime-python image"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  example-agent:
+    build:
+      context: ../../
+      dockerfile: containers/base/Dockerfile
+    container_name: example-agent
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    command: |
+      bash -c "npm install amqplib && node services/example-agent/index.cjs"
+    tty: true
+    environment:
+      - AMQP_URL=amqp://rabbitmq:5672 
