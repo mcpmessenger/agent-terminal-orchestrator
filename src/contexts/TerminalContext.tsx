@@ -39,7 +39,7 @@ export const TerminalProvider = ({ children }: { children: React.ReactNode }) =>
         repository: details.repository,
         branch: details.branch,
         image: details.image,
-        runtime: details.runtime ?? 'powershell',
+        runtime: details.runtime ?? 'bash',
       },
     ]);
   };

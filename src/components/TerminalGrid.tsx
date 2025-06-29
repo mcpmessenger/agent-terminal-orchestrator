@@ -25,7 +25,7 @@ export function TerminalGrid() {
               </Button>
             </div>
             <div className="h-[300px] rounded-md overflow-hidden">
-              <Terminal />
+              <Terminal runtime={session.runtime} />
             </div>
             {(session.repository || session.branch) && (
               <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">

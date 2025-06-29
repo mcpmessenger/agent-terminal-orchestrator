@@ -1,7 +1,7 @@
 import React from 'react';
 import { Header } from './Header';
 import TopTerminalGrid from './TopTerminalGrid';
-import NewTerminalDialog from './NewTerminalDialog';
+import NewTerminalButton from './NewTerminalButton';
 
 export function Dashboard() {
   return (
@@ -12,7 +12,7 @@ export function Dashboard() {
         {/* Controls and Top Terminals */}
         <section className="space-y-6">
           <div className="flex justify-center">
-            <NewTerminalDialog />
+            <NewTerminalButton />
           </div>
           <TopTerminalGrid />
         </section>

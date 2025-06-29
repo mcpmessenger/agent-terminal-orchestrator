@@ -2,6 +2,7 @@ import React from "react";
 import { useTerminals } from "@/contexts/TerminalContext";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import Terminal from "@/components/Terminal";
+import DualTerminal from "@/components/DualTerminal";
 import { cn } from "@/lib/utils";
 
 export default function TopTerminalGrid() {

@@ -1,8 +1,6 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
-// Remove static node-pty import; we'll load dynamically below
-// const pty = require("node-pty");
 const os = require("os");
 const child_process = require("child_process");
 const url = require('url');
@@ -10,10 +8,12 @@ const url = require('url');
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Create HTTP server and attach Express app (for potential REST endpoints in future)
+// Simple health endpoint
+app.get('/health', (req,res)=>res.json({status:'healthy', service:'gateway', timestamp: new Date().toISOString()}));
+
 const server = http.createServer(app);
 
-// WebSocket server specifically for PTY connections
+// PTY WebSocket endpoint
 const wss = new WebSocket.Server({ server, path: "/pty" });
 
 let pty;
@@ -25,15 +25,16 @@ try {
 
 wss.on("connection", (ws, req) => {
   const { query } = url.parse(req.url, true);
-  const requestedShell = query.shell || 'powershell';
-  // Spawn a shell using node-pty when available, otherwise child_process
+  const requestedShell = query.shell || 'bash';
+
   const spawnShell = () => {
     const choose = () => {
       switch(requestedShell){
         case 'cmd': return os.platform()==='win32'?'cmd.exe':'bash';
+        case 'powershell': return os.platform()==='win32'?'powershell.exe':'bash';
         case 'wsl': return 'wsl.exe';
         case 'docker-ubuntu': return 'docker';
-        default: return os.platform()==='win32'?'powershell.exe':'bash';
+        default: return 'bash';
       }
     };
     const shellCmd = choose();
@@ -48,13 +49,12 @@ wss.on("connection", (ws, req) => {
         env: process.env,
       });
     }
-    // Fallback using child_process.
+    // child_process fallback (no TTY capability)
     const cp = child_process.spawn(shellCmd, shellArgs, {
       cwd: process.cwd(),
       env: process.env,
       stdio: "pipe",
     });
-    // Emulate node-pty interface minimally
     return {
       write: (data) => cp.stdin.write(data),
       kill: () => cp.kill(),
@@ -69,25 +69,17 @@ wss.on("connection", (ws, req) => {
 
   const ptyProcess = spawnShell();
 
-  // Forward PTY output to the websocket client
   ptyProcess.on("data", (data) => {
     ws.send(data);
   });
 
-  // Write data received from client into the PTY
   ws.on("message", (data) => {
     ptyProcess.write(data);
   });
 
-  // Cleanup on socket close
   ws.on("close", () => {
     ptyProcess.kill();
   });
 });
 
-// Health check
-app.get('/health', (req,res)=>res.json({status:'healthy', timestamp: new Date().toISOString()}));
-
-server.listen(port, () => {
-  console.log(`PTY server listening on http://localhost:${port}`);
-}); 
+server.listen(port, () => console.log(`Gateway listening on :${port}`)); 

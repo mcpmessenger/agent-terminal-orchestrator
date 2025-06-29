@@ -6,5 +6,5 @@ export interface TerminalSession {
   repository?: string;
   branch?: string;
   image?: string; // container image or agent docker image
-  runtime?: 'powershell' | 'cmd' | 'wsl' | 'docker-ubuntu';
+  runtime?: 'powershell' | 'cmd' | 'wsl' | 'docker-ubuntu' | 'bash' | 'nodejs' | 'python';
 } 

@@ -1,0 +1,10 @@
+{
+  "name": "runtime-manager",
+  "version": "0.1.0",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.21.2",
+    "dockerode": "^3.3.0"
+  }
+} 

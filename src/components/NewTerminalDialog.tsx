@@ -8,10 +8,13 @@ import { Box } from "lucide-react";
 import { useTerminals } from "@/contexts/TerminalContext";
 
 const runtimeOptions = [
+  { value: 'bash', label: 'Bash' },
   { value: 'powershell', label: 'PowerShell' },
   { value: 'cmd', label: 'CMD' },
   { value: 'wsl', label: 'WSL Bash' },
   { value: 'docker-ubuntu', label: 'Docker Ubuntu' },
+  { value: 'nodejs', label: 'Node.js Runtime' },
+  { value: 'python', label: 'Python Runtime' },
 ];
 
 export default function NewTerminalDialog() {
@@ -21,7 +24,7 @@ export default function NewTerminalDialog() {
   const [name, setName] = useState("");
   const [repository, setRepository] = useState("");
   const [branch, setBranch] = useState("main");
-  const [runtime, setRuntime] = useState<'powershell' | 'cmd' | 'wsl' | 'docker-ubuntu'>('powershell');
+  const [runtime, setRuntime] = useState<'bash' | 'powershell' | 'cmd' | 'wsl' | 'docker-ubuntu' | 'nodejs' | 'python'>('bash');
 
   const handleCreate = () => {
     add({ agent, name: name || undefined, repository: repository || undefined, branch: branch || undefined, runtime });

@@ -3,7 +3,7 @@ import { Terminal as XTerm } from "xterm";
 import "xterm/css/xterm.css";
 
 // Simple wrapper component for a live PTY
-export default function Terminal({ runtime = 'powershell' }: { runtime?: string }) {
+export default function Terminal({ runtime = 'bash' }: { runtime?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,10 +20,20 @@ export default function Terminal({ runtime = 'powershell' }: { runtime?: string 
       term.open(containerRef.current);
       // Fit the terminal size to container (simple)
       term.resize(Math.floor(containerRef.current.clientWidth / 9), 24);
+      // Ensure the terminal receives keyboard focus
+      term.focus();
+      // Focus again on click inside container (helpful on browsers)
+      containerRef.current.addEventListener('click', () => term.focus());
     }
 
-    // Connect to local PTY WebSocket
-    const ws = new WebSocket(`ws://localhost:8080/pty?shell=${runtime}`);
+    // Connect to PTY WebSocket (use env var fallback)
+    const baseUrl = import.meta.env.VITE_PTY_WS_URL ?? (()=>{
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const host = window.location.hostname;
+      const port = '8090'; // Must match docker-compose host port mapping
+      return `${proto}://${host}:${port}/pty`;
+    })();
+    const ws = new WebSocket(`${baseUrl}?shell=${runtime}`);
 
     // Send terminal input over WebSocket
     term.onData((data) => {
