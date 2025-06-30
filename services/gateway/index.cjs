@@ -49,15 +49,15 @@ try {
   validateMcp = ()=>true;
 }
 
-function publishMcp(msg, amqpOpts = {}){
+function publishMcp(msg, amqpProps = {}){
   if(!validateMcp(msg)){
     console.error('[gateway] Attempted to publish invalid MCP message', validateMcp.errors);
     return;
   }
-  amqpChannel.publish(
-    EXCHANGE, '', Buffer.from(JSON.stringify(msg)),
-    { correlationId: msg.correlationId || undefined, ...amqpOpts }
-  );
+  amqpChannel.publish(EXCHANGE, '', Buffer.from(JSON.stringify(msg)), {
+    correlationId: msg.correlationId || undefined,
+    ...amqpProps
+  });
 }
 
 // MCP ping endpoint (proxy through RabbitMQ ping/pong)
@@ -74,6 +74,7 @@ app.get('/mcp/ping', async (req, res) => {
     const q = await amqpChannel.assertQueue('', { exclusive: true });
     const timeout = setTimeout(() => {
       amqpChannel.deleteQueue(q.queue).catch(() => {});
+      console.warn('[gateway] /mcp/ping timeout');
       return res.status(504).json({ error: 'timeout' });
     }, 2000);
 
@@ -90,9 +91,7 @@ app.get('/mcp/ping', async (req, res) => {
     }, { noAck: true });
 
     const payload = { type: 'ping', sender: 'gateway', timestamp: ts, correlationId };
-    publishMcp(payload);
-    // ensure reply queue declared binding
-    amqpChannel.sendToQueue(q.queue, Buffer.from(JSON.stringify(payload)), { correlationId });
+    publishMcp(payload, { replyTo: q.queue });
   } catch (err) {
     console.error('[gateway] /mcp/ping error', err);
     res.status(500).json({ error: 'internal_error' });
