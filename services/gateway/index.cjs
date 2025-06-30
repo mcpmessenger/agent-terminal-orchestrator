@@ -7,6 +7,9 @@ const url = require('url');
 const amqp = require("amqplib");
 const { randomUUID } = require("crypto");
 const cors = require("cors");
+const Ajv = require("ajv");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -33,6 +36,30 @@ const EXCHANGE = "mcp.poc";
   }
 })();
 
+// Load MCP schema
+const schemaPath = path.join(__dirname, "..", "..", "shared", "protocols", "json", "mcp-core.schema.json");
+let validateMcp;
+try {
+  const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+  const ajv = new Ajv();
+  validateMcp = ajv.compile(schema);
+  console.log("[gateway] MCP schema loaded");
+} catch(e){
+  console.error('[gateway] Failed to load MCP schema', e.message);
+  validateMcp = ()=>true;
+}
+
+function publishMcp(msg, amqpProps = {}){
+  if(!validateMcp(msg)){
+    console.error('[gateway] Attempted to publish invalid MCP message', validateMcp.errors);
+    return;
+  }
+  amqpChannel.publish(EXCHANGE, '', Buffer.from(JSON.stringify(msg)), {
+    correlationId: msg.correlationId || undefined,
+    ...amqpProps
+  });
+}
+
 // MCP ping endpoint (proxy through RabbitMQ ping/pong)
 app.get('/mcp/ping', async (req, res) => {
   // if AMQP unavailable just respond inline to avoid breaking UI
@@ -47,6 +74,7 @@ app.get('/mcp/ping', async (req, res) => {
     const q = await amqpChannel.assertQueue('', { exclusive: true });
     const timeout = setTimeout(() => {
       amqpChannel.deleteQueue(q.queue).catch(() => {});
+      console.warn('[gateway] /mcp/ping timeout');
       return res.status(504).json({ error: 'timeout' });
     }, 2000);
 
@@ -62,8 +90,8 @@ app.get('/mcp/ping', async (req, res) => {
       } catch {}
     }, { noAck: true });
 
-    const payload = { type: 'ping', ts, correlationId, sender: 'gateway' };
-    amqpChannel.publish(EXCHANGE, '', Buffer.from(JSON.stringify(payload)), { correlationId, replyTo: q.queue });
+    const payload = { type: 'ping', sender: 'gateway', timestamp: ts, correlationId };
+    publishMcp(payload, { replyTo: q.queue });
   } catch (err) {
     console.error('[gateway] /mcp/ping error', err);
     res.status(500).json({ error: 'internal_error' });
