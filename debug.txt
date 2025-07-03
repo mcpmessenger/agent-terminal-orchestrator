@@ -1,0 +1,25 @@
+Problem: All terminals in the frontend show the same container hostname (e.g., developer@365a0c128fbd:/workspace$), or terminals fail to open, even after backend changes to launch a new Docker container per session.
+
+Possible causes:
+- The backend is not actually launching a new Docker container for each terminal session (may be reusing the same container or not running Docker at all).
+- The Docker run command in the backend is not using a unique container name or is not executed for every new terminal.
+- The PTY/WebSocket backend is not attaching to the shell inside the correct, newly spawned container (may be attaching to the host or a shared container).
+- The frontend is not receiving or displaying the unique hostname sent by the backend.
+- There may be a fallback to a local shell if Docker fails to run (check backend logs for errors).
+
+Debug steps:
+1. Check backend logs for Docker errors, fallback messages, or PTY errors when a new terminal is requested.
+2. Manually run the Docker command with real values to ensure it works and returns a unique hostname.
+3. Use browser dev tools to confirm the frontend receives a unique container_hostname message for each terminal session.
+4. Ensure the frontend displays the received hostname in the UI for each terminal.
+5. Add backend logging to confirm:
+   - A new container is created for each session.
+   - The PTY is attached to the correct container.
+   - Any errors are surfaced and not silently ignored.
+6. If terminals still fail to open, check if node-pty is installed and working, and that Docker is accessible from the backend process.
+
+Summary of current state and plan:
+- Backend code (Node.js gateway) attempts to run a new Docker container per terminal session and attaches a PTY to it using node-pty.
+- On first output, backend writes 'hostname' to the shell and sends the result to the frontend as a container_hostname message.
+- If all terminals show the same hostname or fail to open, likely causes are Docker/PTY errors, or the PTY is not attached to the correct container.
+- Next: Add more logging, check backend and frontend flows, and verify each step above.
