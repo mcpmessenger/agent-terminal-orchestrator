@@ -1,0 +1,113 @@
+Here's an enhanced PRD section focusing on terminal operations and multi-agent interoperability, with an additional sequence diagram:
+
+## Terminal Operations & Multi-Agent Workflow
+
+### 1. Core Terminal Capabilities
+```mermaid
+graph TD
+    Terminal[Terminal Instance] -->|1. Execute| Git[git clone]
+    Terminal -->|2. Run| Agent[AI Agent]
+    Terminal -->|3. Communicate| MCP[MCP Server]
+    Git -->|stdout/stderr| Terminal
+    Agent -->|stdout/stderr| Terminal
+```
+
+### 2. Git Integration Requirements
+- Full git command support in every terminal instance
+- Shared credential management across terminals
+- Cross-terminal repository awareness
+- Branch status indicators in UI
+
+### 3. Multi-Agent Collaboration Flow
+```mermaid
+sequenceDiagram
+    participant T1 as Terminal 1 (Claude)
+    participant T2 as Terminal 2 (Gemini)
+    participant MCP as MCP Server
+    participant D as Docker
+    
+    T1->>D: docker run claude-image
+    T2->>D: docker run gemini-image
+    T1->>MCP: /register terminal_id=claude1
+    T2->>MCP: /register terminal_id=gemini1
+    T1->>T1: git clone repoA
+    T2->>T2: git clone repoB
+    T1->>MCP: Send analysis_request(repoA)
+    MCP->>T2: Forward to gemini1
+    T2->>T2: Process request
+    T2->>MCP: Send analysis_results
+    MCP->>T1: Forward results
+```
+
+### 4. Technical Specifications
+
+**4.1 Terminal Requirements**
+- Full PTY support
+- ANSI escape sequence handling
+- Split buffer for command input vs agent output
+- Configurable command prefixes:
+  ```bash
+  # Example terminal with agent awareness
+  [claude@repoA]$ git status
+  [gemini@repoB]$ mcp send --to claude "Please review main.py"
+  ```
+
+**4.2 Docker Agent Requirements**
+- Pre-configured images must include:
+  - Git client
+  - MCP client library
+  - Language-specific toolchains
+  - Volume mount points at /workspace
+
+**4.3 MCP Extensions**
+- New message types:
+  ```typescript
+  interface GitCommand {
+    type: 'git';
+    command: 'clone' | 'pull' | 'status';
+    args: string[];
+    cwd: string;
+  }
+
+  interface AgentMessage {
+    type: 'agent';
+    from: string;
+    to: string;
+    body: string | CodeBlock;
+  }
+  ```
+
+### 5. Example Use Case: Collaborative Coding
+
+1. Terminal 1 (Claude):
+   ```bash
+   git clone https://github.com/projectA
+   cd projectA
+   claude --analyze architecture
+   mcp send --to gemini "Need help with auth module"
+   ```
+
+2. Terminal 2 (Gemini) receives:
+   ```bash
+   [MCP] claude: "Need help with auth module"
+   git clone https://github.com/auth-templates
+   mcp send --to claude --file auth-solution.py
+   ```
+
+### 6. Implementation Considerations
+
+**6.1 Path Handling**
+- Docker volume mapping strategy:
+  ```bash
+  docker run -v $(pwd):/workspace claude-image
+  ```
+  
+**6.2 Security Controls**
+- Git operations execute in host-mounted workspace
+- Agent operations execute in container sandbox
+- MCP messages sanitized for shell injection
+
+Would you like me to:
+1. Add more detailed sequence diagrams for specific workflows?
+2. Provide sample code for the MCP message handlers?
+3. Outline the Dockerfile requirements for agent images?

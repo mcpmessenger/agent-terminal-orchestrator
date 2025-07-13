@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: ../../
+      dockerfile: containers/base/Dockerfile
+    container_name: gateway
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    ports:
+      - "8090:8080"
+    command: |
+      bash -c "npm install && npm install cors && node services/gateway/index.cjs"
+    tty: true
+    environment:
+      - AMQP_URL=amqp://rabbitmq:5672
+
+  repo-manager:
+    image: python:3.11-slim
+    container_name: repo-manager
+    working_dir: /app
+    volumes:
+      - ../../services/repository-manager:/app
+    ports:
+      - "5000:5000"
+    entrypoint: /bin/sh -c "pip install flask && python app.py"
+
+  runtime-manager:
+    build:
+      context: ../../services/runtime-manager
+      dockerfile: Dockerfile
+    container_name: runtime-manager
+    working_dir: /app
+    volumes:
+      # allow runtime-manager to control host docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "4000:4000"
+    tty: true
+
+  # Build runtime images (nodejs, python) so runtime-manager can spawn them
+  runtime-nodejs-build:
+    build:
+      context: ../../containers/runtimes/nodejs
+      dockerfile: Dockerfile
+    image: runtime-nodejs:latest
+    entrypoint: ["echo", "built runtime-nodejs image"]
+
+  runtime-python-build:
+    build:
+      context: ../../containers/runtimes/python
+      dockerfile: Dockerfile
+    image: runtime-python:latest
+    entrypoint: ["echo", "built runtime-python image"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  example-agent:
+    build:
+      context: ../../
+      dockerfile: containers/base/Dockerfile
+    container_name: example-agent
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    command: |
+      bash -c "npm install amqplib && node services/example-agent/index.cjs"
+    tty: true
+    environment:
+      - AMQP_URL=amqp://rabbitmq:5672 
